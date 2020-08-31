@@ -1,88 +1,58 @@
 "use strict";
-
-/**
- * User sessions
- * @param {Array} users
- */
-const users = [];
-
 /**
  * Find opponent for a user
  * @param {User} user
  */
-function findOpponent(user) {
-	for (let i = 0; i < users.length; i++) {
-		if (
-			user !== users[i] &&
-			users[i].opponent === null
-		) {
-			new Game(user, users[i]).start();
-		}
-	}
+function findGame(user) {
+	game.addUser(user);
+	user.game = game;
 }
 
-/**
- * Remove user session
- * @param {User} user
- */
-function removeUser(user) {
-	users.splice(users.indexOf(user), 1);
+function pickRandom(array) {
+	return array[Math.floor(Math.random() * array.length)];
 }
 
 /**
  * Game class
  */
 class Game {
-
-	/**
-	 * @param {User} user1
-	 * @param {User} user2
-	 */
-	constructor(user1, user2) {
-		this.user1 = user1;
-		this.user2 = user2;
+	constructor() {
+		this.users = [];
 	}
 
-	/**
-	 * Start new game
-	 */
+	addUser(newUser) {
+		this.users.forEach((user) => {
+			newUser.socket.emit('joined', user.id, user.name);
+			user.socket.emit('joined', newUser.id, newUser.name);
+		});
+		this.users.push(newUser);
+	}
+
+	removeUser(user) {
+		const pos = this.users.findIndex(u => u === user);
+		this.users.splice(pos, 1);
+		this.users.forEach(u => {
+			u.socket.emit('left', user.id);
+		});
+	}
+
+	populateMovement(user, movement) {
+		console.log(movement);
+		this.users.filter(u => u.id !== user.id).forEach((u) => {
+			u.socket.emit('movement', user.id, movement);
+		});
+	}
+
 	start() {
-		this.user1.start(this, this.user2);
-		this.user2.start(this, this.user1);
+		const time = Date.now();
+		this.users.forEach((user) => {
+			user.start(time);
+		});
 	}
 
-	/**
-	 * Is game ended
-	 * @return {boolean}
-	 */
-	ended() {
-		return this.user1.guess !== GUESS_NO && this.user2.guess !== GUESS_NO;
+	end() {
+		this.start();
 	}
-
-	/**
-	 * Final score
-	 */
-	score() {
-		if (
-			this.user1.guess === GUESS_ROCK && this.user2.guess === GUESS_SCISSORS ||
-			this.user1.guess === GUESS_PAPER && this.user2.guess === GUESS_ROCK ||
-			this.user1.guess === GUESS_SCISSORS && this.user2.guess === GUESS_PAPER
-		) {
-			this.user1.win();
-			this.user2.lose();
-		} else if (
-			this.user2.guess === GUESS_ROCK && this.user1.guess === GUESS_SCISSORS ||
-			this.user2.guess === GUESS_PAPER && this.user1.guess === GUESS_ROCK ||
-			this.user2.guess === GUESS_SCISSORS && this.user1.guess === GUESS_PAPER
-		) {
-			this.user2.win();
-			this.user1.lose();
-		} else {
-			this.user1.draw();
-			this.user2.draw();
-		}
-	}
-
 }
 
 /**
@@ -93,48 +63,27 @@ class User {
 	/**
 	 * @param {Socket} socket
 	 */
-	constructor(socket) {
+	constructor(socket, game) {
 		this.socket = socket;
+		this.id = socket.id;
 		this.game = null;
-		this.opponent = null;
-		this.guess = GUESS_NO;
+		this.name = pickRandom('Paprika,Tomate,Zwiebel,Lauch,Aubergine,Avocado,Orange,Apfel,Birne,Erdbere'.split(','));
+		this.movements = [];
 	}
 
-	/**
-	 * Set guess value
-	 * @param {number} guess
-	 */
-	setGuess(guess) {
-		if (
-			!this.opponent ||
-			guess <= GUESS_NO ||
-			guess > GUESS_SCISSORS
-		) {
-			return false;
-		}
-		this.guess = guess;
-		return true;
+	addMovementEvent(event) {
+		this.movements.push(event);
+		this.game.populateMovement(this, event);
 	}
 
-	/**
-	 * Start new game
-	 * @param {Game} game
-	 * @param {User} opponent
-	 */
-	start(game, opponent) {
-		this.game = game;
-		this.opponent = opponent;
-		this.guess = GUESS_NO;
-		this.socket.emit("start");
+	start(time) {
+		this.socket.emit("start", time);
 	}
 
 	/**
 	 * Terminate game
 	 */
 	end() {
-		this.game = null;
-		this.opponent = null;
-		this.guess = GUESS_NO;
 		this.socket.emit("end");
 	}
 
@@ -142,21 +91,21 @@ class User {
 	 * Trigger win event
 	 */
 	win() {
-		this.socket.emit("win", this.opponent.guess);
+		this.socket.emit("win");
 	}
 
 	/**
 	 * Trigger lose event
 	 */
 	lose() {
-		this.socket.emit("lose", this.opponent.guess);
+		this.socket.emit("lose");
 	}
 
 	/**
 	 * Trigger draw event
 	 */
 	draw() {
-		this.socket.emit("draw", this.opponent.guess);
+		this.socket.emit("draw");
 	}
 
 }
@@ -169,26 +118,23 @@ module.exports = {
 
 	io: (socket) => {
 		const user = new User(socket);
-		users.push(user);
-		findOpponent(user);
+		findGame(user);
 
 		socket.on("disconnect", () => {
+			game.removeUser(user);
 			console.log("Disconnected: " + socket.id);
-			removeUser(user);
-			if (user.opponent) {
-				user.opponent.end();
-				findOpponent(user.opponent);
-			}
 		});
 
-		socket.on("guess", (guess) => {
-			console.log("Guess: " + socket.id);
-			if (user.setGuess(guess) && user.game.ended()) {
-				user.game.score();
-				user.game.start();
-				storage.get('games', 0).then(games => {
-					storage.set('games', games + 1);
-				});
+		socket.on("restar", () => {
+			console.log("Restarted: " + socket.id);
+			user.game.start();
+		});
+
+		socket.on("movement", (event) => {
+			console.log("Movement: " + socket.id);
+			user.addMovementEvent(event);
+			if (event.position >= 1000) {
+				user.game.end(user);
 			}
 		});
 
@@ -202,3 +148,5 @@ module.exports = {
 	}
 
 };
+
+const game = new Game();
