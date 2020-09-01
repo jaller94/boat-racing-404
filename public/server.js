@@ -18,7 +18,7 @@ function randomInt(min, max) {
 
 function randomName() {
 	const name = pickRandom('Paprika,Zucchini,Tomate,Zwiebel,Lauch,Aubergine,Avocado,Orange,Apfel,Birne,Erdbere,Heidelbeere,Blaubeere,Kürbis,Kartoffel,Knoblauch,Gurke'.split(','));
-	return `${name} ${randomInt(1000, 9999)}`;
+	return `${name} ${randomInt(1, 9)}`;
 }
 
 class Game {
@@ -56,8 +56,11 @@ class Game {
 		});
 	}
 
-	end() {
-		this.start();
+	end(user) {
+		//this.start();
+		this.users.forEach(u => {
+			u.socket.emit('userFinished', `${user.name} finished the race!`);
+		});
 	}
 }
 
@@ -136,9 +139,11 @@ module.exports = {
 		socket.on("movement", (event) => {
 			console.log("Movement: " + socket.id);
 			user.addMovementEvent(event);
-			if (event.position >= 1000) {
-				user.game.end(user);
-			}
+		});
+
+		socket.on("finish", (event) => {
+			console.log("Finished: " + socket.id);
+			user.game.end(user);
 		});
 
 		console.log("Connected: " + socket.id);

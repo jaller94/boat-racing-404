@@ -1,3 +1,11 @@
+@media (prefers-color-scheme: dark) {
+    html {
+        background: black;
+        color: #aaa;
+    }
+}
+
+
 html {
     text-align: center;
 }

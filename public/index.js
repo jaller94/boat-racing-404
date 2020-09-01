@@ -5,7 +5,7 @@ let raceStartTime;
 
 let pipes = [];
 
-function addPipe(track, userId, name = "You") {
+function addPipe(track, userId, name = 'You') {
     const root = document.createElement('p');
     const div = document.createElement('div');
     div.innerText = name;
@@ -15,7 +15,7 @@ function addPipe(track, userId, name = "You") {
     root.append(div);
     root.append(progress);
     document.getElementById('pipes').append(root);
-    const player = new Player(track, userId);
+    const player = new Player(track, userId === undefined, userId);
     pipes.push({
         player,
         progress,
@@ -66,8 +66,11 @@ setInterval(() => {
     if (raceStartTime) {
         const time = Date.now() - raceStartTime;
         const position = player.getPosition(time);
-        const next = player.getNextChange(time);
-        display.innerHTML = (track.isBump(position) ? '🟥' : '🟩') + ` next: ${next.type} at ${next.position}; whenWillIbethere: ${player.whenWillIbethere(next.position)}`;
+        if (player.finished) {
+            display.innerHTML = `🏁 ${(player.finished/1000).toFixed(2)} seconds`
+        } else {
+            display.innerHTML = (track.isBump(position) ? '🟥' : '🟩');
+        }
         pipes.forEach(pipe => {
             pipe.progress.value = pipe.player.getPosition(time);
         });
@@ -76,11 +79,11 @@ setInterval(() => {
 
 class Track {
     constructor() {
-        this.length = 1000;
+        this.length = 378;
         this.bumps = [];
         for (let index = 1; index < 10; index++) {
             this.bumps.push({
-                start: index * 100 + 100,
+                start: index * 100,
                 length: 50,
             });
         }
@@ -94,15 +97,48 @@ class Track {
 }
 
 class Player {
-    constructor(track, id) {
+    constructor(track, local=true, id=undefined) {
         this.id = id;
         this.track = track;
         this.changes = [];
         this.isDown = false;
+        this.local = local;
+        this.timeoutForNext = null;
+        this.finished = null;
     }
 
     addMovementEvent(change) {
+        if (this.finished) return;
         this.changes.push(change);
+        if (this.local) {
+            socket.emit('movement', change);
+
+            this.setTimeoutForNext();
+        }
+    }
+
+    setTimeoutForNext(time) {
+        if (this.timeoutForNext) {
+            clearTimeout(this.timeoutForNext);
+        }
+        const next = player.getNextChange(time || this.lastChange.time);
+        const nextTime = player.whenWillIbethere(next.position)
+        const deltaTime = nextTime - (Date.now() - raceStartTime);
+        this.timeoutForNext = setTimeout(() => {
+            if (next.type === 'bumpstart' && this.isDown) {
+                this.addMovementEvent({
+                    time: nextTime,
+                    position: next.position,
+                    speed: 0.003,
+                });
+            } else if (next.type === 'finish') {
+                socket.emit('finish', nextTime);
+                this.finished = nextTime;
+            }
+            if (next.type !== 'finish') {
+                this.setTimeoutForNext(nextTime);
+            }
+        }, deltaTime);
     }
 
     press(timestamp) {
@@ -115,7 +151,6 @@ class Player {
             speed: this.track.isBump(position) ? 0.005 : 0.04,
         };
         this.addMovementEvent(change);
-        socket.emit("movement", change);
     }
 
     release(timestamp) {
@@ -128,7 +163,6 @@ class Player {
             speed: 0.01,
         };
         this.addMovementEvent(change);
-        socket.emit("movement", change);
     }
 
     get lastChange() {
@@ -196,59 +230,62 @@ function displayScore(text) {
  */
 function bind() {
 
-    socket.on("start", (time) => {
-        setMessage("Race started");
-        raceStartTime = time;
+    socket.on('start', (time) => {
+        setMessage('Race started');
+        raceStartTime = Date.now();
         pipes.forEach(pipe => {
             pipe.player.changes = [];
+            pipe.player.finished = null;
             pipe.progress.max = track.length;
             pipe.progress.value = 0;
         });
     });
 
-    socket.on("win", () => {
+    socket.on('win', () => {
         points.win++;
-        displayScore("You win!");
+        displayScore('You win!');
     });
 
-    socket.on("lose", () => {
+    socket.on('lose', () => {
         points.lose++;
-        displayScore("You lose!");
+        displayScore('You lose!');
     });
 
-    socket.on("draw", () => {
+    socket.on('draw', () => {
         points.draw++;
-        displayScore("Draw!");
+        displayScore('Draw!');
     });
 
-    socket.on("end", () => {
-        setMessage("Game ended.");
+    socket.on('userFinished', (msg) => {
+        setMessage(msg);
     });
 
-    socket.on("joined", (id, name) => {
+    socket.on('joined', (id, name) => {
         setMessage(`Player ${name} joined.`);
         addPipe(track, id, name);
     });
 
-    socket.on("left", (id) => {
-        setMessage(`Player ${id} left.`);
+    socket.on('left', (id) => {
+        const player = pipes.find(pipe => pipe.player.id === id).player;
+        setMessage(`Player ${player.name} left.`);
         removePipe(id);
     });
 
-    socket.on("movement", (id, movement) => {
+    socket.on('movement', (id, movement) => {
+        console.log(Date.now() - raceStartTime - movement);
         pipes.find(pipe => pipe.player.id === id).player.addMovementEvent(movement);
     });
 
-    socket.on("connect", () => {
-        setMessage("Connected.");
+    socket.on('connect', () => {
+        setMessage('Connected.');
     });
 
-    socket.on("disconnect", () => {
-        setMessage("Connection lost!");
+    socket.on('disconnect', () => {
+        setMessage('Connection lost!');
     });
 
-    socket.on("error", () => {
-        setMessage("Connection error!");
+    socket.on('error', () => {
+        setMessage('Connection error!');
     });
 }
 
@@ -265,8 +302,8 @@ player = addPipe(track);
  * Client module init
  */
 function init() {
-    socket = io({ upgrade: false, transports: ["websocket"] });
+    socket = io({ upgrade: false, transports: ['websocket'] });
     bind();
 }
 
-window.addEventListener("load", init, false);
+window.addEventListener('load', init, false);
