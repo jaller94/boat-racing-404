@@ -33,8 +33,8 @@ function removePipe(userId) {
 
 window.addEventListener('keypress', (event) => {
     if (event.key === 'r') {
-        console.log('restar');
-        socket.emit('restar');
+        console.log('restart');
+        socket.emit('restart');
     }
 });
 
@@ -133,15 +133,19 @@ class Player {
 
     get lastChange() {
         if (this.changes.length === 0) {
-            return null;
+            return {
+                time: 0,
+                position: 0,
+                speed: 0.01,
+            };
         }
         return this.changes[this.changes.length - 1];
     }
 
     whenWillIbethere(target) {
-        const deltaLength = this.lastChange ? target - this.lastChange.position : 0;
-        const speed = this.lastChange ? this.lastChange.speed : 0.01;
-        return deltaLength / speed + (this.lastChange ? this.lastChange.time : 0);
+        const deltaLength = target - this.lastChange.position;
+        const speed = this.lastChange.speed;
+        return deltaLength / speed + this.lastChange.time;
     }
 
     getNextChange(timestamp) {
@@ -174,11 +178,8 @@ class Player {
     }
 
     getPosition(timestamp) {
-        if (this.lastChange) {
-            const delta = timestamp - this.lastChange.time;
-            return this.lastChange.position + delta * this.lastChange.speed;
-        }
-        return timestamp * 0.01;
+        const delta = timestamp - this.lastChange.time;
+        return this.lastChange.position + delta * this.lastChange.speed;
     }
 }
 
@@ -188,12 +189,6 @@ function setMessage(text) {
 
 function displayScore(text) {
     document.getElementById('score').innerText = text;
-}
-
-const points = {
-    win: 0,
-    lose: 0,
-    draw: 0,
 }
 
 /**
@@ -227,7 +222,7 @@ function bind() {
     });
 
     socket.on("end", () => {
-        setMessage("Waiting for opponent...");
+        setMessage("Game ended.");
     });
 
     socket.on("joined", (id, name) => {
@@ -245,7 +240,7 @@ function bind() {
     });
 
     socket.on("connect", () => {
-        setMessage("Waiting for opponent...");
+        setMessage("Connected.");
     });
 
     socket.on("disconnect", () => {
@@ -257,6 +252,11 @@ function bind() {
     });
 }
 
+const points = {
+    win: 0,
+    lose: 0,
+    draw: 0,
+};
 raceStartTime = Date.now();
 track = new Track();
 player = addPipe(track);

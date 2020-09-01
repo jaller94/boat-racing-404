@@ -12,9 +12,15 @@ function pickRandom(array) {
 	return array[Math.floor(Math.random() * array.length)];
 }
 
-/**
- * Game class
- */
+function randomInt(min, max) {
+	return Math.floor(Math.random() * (max - min) + min);
+}
+
+function randomName() {
+	const name = pickRandom('Paprika,Zucchini,Tomate,Zwiebel,Lauch,Aubergine,Avocado,Orange,Apfel,Birne,Erdbere,Heidelbeere,Blaubeere,Kürbis,Kartoffel,Knoblauch,Gurke'.split(','));
+	return `${name} ${randomInt(1000, 9999)}`;
+}
+
 class Game {
 	constructor() {
 		this.users = [];
@@ -55,19 +61,16 @@ class Game {
 	}
 }
 
-/**
- * User session class
- */
 class User {
 
 	/**
 	 * @param {Socket} socket
 	 */
-	constructor(socket, game) {
+	constructor(socket) {
 		this.socket = socket;
 		this.id = socket.id;
 		this.game = null;
-		this.name = pickRandom('Paprika,Tomate,Zwiebel,Lauch,Aubergine,Avocado,Orange,Apfel,Birne,Erdbere'.split(','));
+		this.name = randomName();
 		this.movements = [];
 	}
 
@@ -125,7 +128,7 @@ module.exports = {
 			console.log("Disconnected: " + socket.id);
 		});
 
-		socket.on("restar", () => {
+		socket.on("restart", () => {
 			console.log("Restarted: " + socket.id);
 			user.game.start();
 		});
