@@ -272,7 +272,7 @@ function bind() {
     });
 
     socket.on('movement', (id, movement) => {
-        console.log(Date.now() - raceStartTime - movement);
+        console.log(Date.now() - raceStartTime - movement.time);
         pipes.find(pipe => pipe.player.id === id).player.addMovementEvent(movement);
     });
 
