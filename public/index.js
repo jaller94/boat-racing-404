@@ -79,7 +79,7 @@ setInterval(() => {
 
 class Track {
     constructor() {
-        this.length = 378;
+        this.length = 100;
         this.bumps = [];
         for (let index = 1; index < 10; index++) {
             this.bumps.push({
@@ -225,6 +225,25 @@ function displayScore(text) {
     document.getElementById('score').innerText = text;
 }
 
+function displayHighscore(highscore) {
+    const highscoreDiv = document.getElementById('highscore');
+    const tbody = highscoreDiv.querySelector('tbody');
+    while (tbody.firstChild && tbody.removeChild(tbody.firstChild));
+    highscore.forEach((entry, index) => {
+        const tr = document.createElement('tr');
+        const place = document.createElement('td');
+        const name = document.createElement('td');
+        const time = document.createElement('td');
+        place.innerText = `#${index + 1}`;
+        name.innerText = `${entry.name}`;
+        time.innerText = `${(entry.finishTime/1000).toFixed(2)} s`;
+        tr.appendChild(place);
+        tr.appendChild(name);
+        tr.appendChild(time);
+        tbody.appendChild(tr);
+    });
+}
+
 /**
  * Binde Socket.IO and button events
  */
@@ -272,8 +291,12 @@ function bind() {
     });
 
     socket.on('movement', (id, movement) => {
-        console.log(Date.now() - raceStartTime - movement.time);
+        // console.log(Date.now() - raceStartTime - movement.time);
         pipes.find(pipe => pipe.player.id === id).player.addMovementEvent(movement);
+    });
+
+    socket.on('highscore', (highscore) => {
+        displayHighscore(highscore);
     });
 
     socket.on('connect', () => {

@@ -1,8 +1,4 @@
 "use strict";
-/**
- * Find opponent for a user
- * @param {User} user
- */
 function findGame(user) {
 	game.addUser(user);
 	user.game = game;
@@ -17,13 +13,14 @@ function randomInt(min, max) {
 }
 
 function randomName() {
-	const name = pickRandom('Paprika,Zucchini,Tomate,Zwiebel,Lauch,Aubergine,Avocado,Orange,Apfel,Birne,Erdbere,Heidelbeere,Blaubeere,Kürbis,Kartoffel,Knoblauch,Gurke'.split(','));
+	const name = pickRandom('Paprika,Zucchini,Tomate,Zwiebel,Lauch,Aubergine,Avocado,Orange,Apfel,Birne,Erdbeere,Heidelbeere,Blaubeere,Kürbis,Kartoffel,Knoblauch,Gurke'.split(','));
 	return `${name} ${randomInt(1, 9)}`;
 }
 
 class Game {
-	constructor() {
+	constructor(users) {
 		this.users = [];
+		this.firstFinishTime = null;
 	}
 
 	addUser(newUser) {
@@ -50,22 +47,26 @@ class Game {
 	}
 
 	start() {
-		const time = Date.now();
+		this.startDate = Date.now();
 		this.users.forEach((user) => {
-			user.start(time);
+			user.start();
 		});
 	}
 
-	end(user) {
-		//this.start();
+	end() {
+		console.log('Sending the highscores!');
+		const highscore = this.users.map(u => ({
+			id: u.id,
+			name: u.name,
+			finishTime: u.finishTime,
+		}));
 		this.users.forEach(u => {
-			u.socket.emit('userFinished', `${user.name} finished the race!`);
+			u.socket.emit('highscore', highscore);
 		});
 	}
 }
 
 class User {
-
 	/**
 	 * @param {Socket} socket
 	 */
@@ -75,6 +76,7 @@ class User {
 		this.game = null;
 		this.name = randomName();
 		this.movements = [];
+		this.finishTime = null;
 	}
 
 	addMovementEvent(event) {
@@ -82,38 +84,13 @@ class User {
 		this.game.populateMovement(this, event);
 	}
 
-	start(time) {
-		this.socket.emit("start", time);
+	start() {
+		this.socket.emit('start');
 	}
 
-	/**
-	 * Terminate game
-	 */
-	end() {
-		this.socket.emit("end");
+	finish(time) {
+		this.finishTime = time;
 	}
-
-	/**
-	 * Trigger win event
-	 */
-	win() {
-		this.socket.emit("win");
-	}
-
-	/**
-	 * Trigger lose event
-	 */
-	lose() {
-		this.socket.emit("lose");
-	}
-
-	/**
-	 * Trigger draw event
-	 */
-	draw() {
-		this.socket.emit("draw");
-	}
-
 }
 
 /**
@@ -141,9 +118,12 @@ module.exports = {
 			user.addMovementEvent(event);
 		});
 
-		socket.on("finish", (event) => {
+		socket.on("finish", (time) => {
 			console.log("Finished: " + socket.id);
-			user.game.end(user);
+			user.finish(time);
+			if (game.users.every(u => !!u.finishTime)) {
+				user.game.end();
+			}
 		});
 
 		console.log("Connected: " + socket.id);
