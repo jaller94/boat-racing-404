@@ -23,6 +23,7 @@ let allowRestartFlag = false;
 
 function allowRestart() {
     document.getElementById('restartButton').disabled = false;
+    document.getElementById('restartButtonDiv').style = '';
     allowRestartFlag = true;
 }
 
