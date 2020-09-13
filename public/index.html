@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Playground</title>
+    <title>Boat Racing 404</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="display"></div>
-    <div id="score"></div>
+    <h1>Boat Racing 404</h1>
+    <p>Sail against other players for 404 meters. Hold Space or touch your screen to speed <string>in clear water.</string></p>
     <div id="message"></div>
-    <div id="pipes"></div>
+    <canvas id="canvas" width="320" height="320"></canvas>
+    <div>
+        <button id="restartButton">Restart race</button> for everyone.
+    </div>
+    <h2>Highscore of the last race</h2>
     <div id="highscore">
         <table>
             <thead>
@@ -25,7 +29,12 @@
             </tbody>
         </table>
     </div>
+    <h2>Credits</h2>
+    <ul>
+        <li><a href="https://opengameart.org/content/sail-ships-in-8-directions">Sail boat by veil (CC0)</a></li>
+        <li><a href="https://opengameart.org/content/road-and-water-tiles-from-isometric-set">Road and water tiles by Kenney (CC0)</a></li>
+    </ul>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="index.js"></script>
+    <script src="./index.js"></script>
 </body>
 </html>

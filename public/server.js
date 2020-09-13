@@ -85,11 +85,14 @@ class User {
 	}
 
 	start() {
-		this.socket.emit('start');
+		this.socket.emit('start', 1000);
 	}
 
 	finish(time) {
 		this.finishTime = time;
+		this.users.forEach(u => {
+			u.socket.emit('userFinished', this.id, time);
+		});
 	}
 }
 

@@ -1,45 +1,92 @@
-const display = document.getElementById('display');
+'use strict';
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+
+const shipImage = document.createElement('img');
+shipImage.src = './ship.png';
+const tilesImage = document.createElement('img');
+tilesImage.src = './tiles.png';
+shipImage.addEventListener('load', () => {
+    // TODO Implement a better loading system
+});
+tilesImage.addEventListener('load', () => {
+    mainLoop();
+});
+
+document.addEventListener('click', () => {
+    socket.emit('restart');
+});
+
+
+function mainLoop() {
+    ctx.beginPath();
+    ctx.fillStyle = '#63caf5';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (raceStartTime) {
+        const time = Date.now() - raceStartTime;
+        const position = player.getPosition(time);
+        ctx.save();
+        ctx.translate(-position + 200, 0);
+        drawMap();
+        
+        ctx.fillStyle = '#0341ae';
+        for (const bump of track.bumps) {
+            ctx.fillRect(bump.start, 24, bump.length, 300);
+        }
+
+        ctx.strokeStyle = '#666';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, canvas.height);
+        ctx.stroke();
+        ctx.strokeStyle = '#f00';
+        ctx.beginPath();
+        ctx.moveTo(track.length + 10, 0);
+        ctx.lineTo(track.length + 10, canvas.height);
+        ctx.stroke();
+        players.forEach((p, i) => {
+            const pos = p.getPosition(time);
+            ctx.drawImage(shipImage, pos - 10, 32 + i * 16, 16, 16);
+        });
+        ctx.restore();
+    }
+    requestAnimationFrame(mainLoop);
+}
+
+function drawMap() {
+    for (let i = -6; i < 16; i++) {
+        ctx.drawImage(tilesImage, 128, 128 + 64, 64, 64, i*64, 0, 64, 64);
+    }
+}
+
+let socket;
 let track;
 let player;
 let raceStartTime;
 
-let pipes = [];
+let players = [];
 
-function addPipe(track, userId, name = 'You') {
-    const root = document.createElement('p');
-    const div = document.createElement('div');
-    div.innerText = name;
-    const progress = document.createElement('progress');
-    progress.value = 0;
-    progress.classList.add('pipe');
-    root.append(div);
-    root.append(progress);
-    document.getElementById('pipes').append(root);
+function addPlayer(track, userId, name = 'You') {
     const player = new Player(track, userId === undefined, userId);
-    pipes.push({
-        player,
-        progress,
-        root,
-    });
+    players.push(player);
     return player;
 }
 
-function removePipe(userId) {
-    const pipe = pipes.find(p => p.player.id === userId);
-    pipe.root.remove();
-    const pos = pipes.findIndex(p => p === pipe);
-    pipes.splice(pos, 1);
+function removePlayer(userId) {
+    const pos = players.findIndex(p => p.id === userId);
+    players.splice(pos, 1);
 }
 
 window.addEventListener('keypress', (event) => {
     if (event.key === 'r') {
-        console.log('restart');
         socket.emit('restart');
     }
 });
 
 window.addEventListener('keydown', (event) => {
     if (event.key === ' ') {
+        event.preventDefault();
         const time = Date.now() - raceStartTime;
         player.press(time);
     }
@@ -62,26 +109,11 @@ window.addEventListener('keyup', (event) => {
     }
 });
 
-setInterval(() => {
-    if (raceStartTime) {
-        const time = Date.now() - raceStartTime;
-        const position = player.getPosition(time);
-        if (player.finished) {
-            display.innerHTML = `🏁 ${(player.finished/1000).toFixed(2)} seconds`
-        } else {
-            display.innerHTML = (track.isBump(position) ? '🟥' : '🟩');
-        }
-        pipes.forEach(pipe => {
-            pipe.progress.value = pipe.player.getPosition(time);
-        });
-    }
-}, 100);
-
 class Track {
-    constructor() {
-        this.length = 100;
+    constructor(length = 100) {
+        this.length = length;
         this.bumps = [];
-        for (let index = 1; index < 10; index++) {
+        for (let index = 1; index < Math.floor(length / 10); index++) {
             this.bumps.push({
                 start: index * 100,
                 length: 50,
@@ -104,11 +136,22 @@ class Player {
         this.isDown = false;
         this.local = local;
         this.timeoutForNext = null;
-        this.finished = null;
+        this.finishTime = null;
+    }
+
+    reset(track) {
+        this.track = track;
+        this.changes = [];
+        this.isDown = false;
+        if (this.timeoutForNext) {
+            clearTimeout(this.timeoutForNext);
+        }
+        this.timeoutForNext = null;
+        this.finishTime = null;
     }
 
     addMovementEvent(change) {
-        if (this.finished) return;
+        if (this.finishTime) return;
         this.changes.push(change);
         if (this.local) {
             socket.emit('movement', change);
@@ -132,8 +175,14 @@ class Player {
                     speed: 0.003,
                 });
             } else if (next.type === 'finish') {
+                this.addMovementEvent({
+                    time: nextTime,
+                    position: next.position,
+                    speed: 0.01,
+                });
                 socket.emit('finish', nextTime);
-                this.finished = nextTime;
+                this.finishTime = nextTime;
+                console.log('finished');
             }
             if (next.type !== 'finish') {
                 this.setTimeoutForNext(nextTime);
@@ -142,6 +191,7 @@ class Player {
     }
 
     press(timestamp) {
+        if (timestamp < 0 || player.finishTime) return;
         if (this.isDown) return;
         this.isDown = true;
         const position = this.getPosition(timestamp);
@@ -154,6 +204,7 @@ class Player {
     }
 
     release(timestamp) {
+        if (timestamp < 0 || player.finishTime) return;
         if (!this.isDown) return;
         this.isDown = false;
         const position = this.getPosition(timestamp);
@@ -213,16 +264,15 @@ class Player {
 
     getPosition(timestamp) {
         const delta = timestamp - this.lastChange.time;
+        if (this.finishTime) {
+            return this.track.length + Math.min(delta * this.lastChange.speed, 48);
+        }
         return this.lastChange.position + delta * this.lastChange.speed;
     }
 }
 
 function setMessage(text) {
     document.getElementById('message').innerText = text;
-}
-
-function displayScore(text) {
-    document.getElementById('score').innerText = text;
 }
 
 function displayHighscore(highscore) {
@@ -249,50 +299,31 @@ function displayHighscore(highscore) {
  */
 function bind() {
 
-    socket.on('start', (time) => {
-        setMessage('Race started');
-        raceStartTime = Date.now();
-        pipes.forEach(pipe => {
-            pipe.player.changes = [];
-            pipe.player.finished = null;
-            pipe.progress.max = track.length;
-            pipe.progress.value = 0;
-        });
-    });
-
-    socket.on('win', () => {
-        points.win++;
-        displayScore('You win!');
-    });
-
-    socket.on('lose', () => {
-        points.lose++;
-        displayScore('You lose!');
-    });
-
-    socket.on('draw', () => {
-        points.draw++;
-        displayScore('Draw!');
-    });
-
-    socket.on('userFinished', (msg) => {
-        setMessage(msg);
+    socket.on('start', (length) => {
+        track = new Track(length);
+        raceStartTime = Date.now() + 5000;
+        players.forEach(p => p.reset(track));
+        setMessage('New race about to start!');
+        setTimeout(() => { setMessage('3'); }, 2000);
+        setTimeout(() => { setMessage('2'); }, 3000);
+        setTimeout(() => { setMessage('1'); }, 4000);
+        setTimeout(() => { setMessage('GO!'); }, 5000);
     });
 
     socket.on('joined', (id, name) => {
         setMessage(`Player ${name} joined.`);
-        addPipe(track, id, name);
+        addPlayer(track, id, name);
     });
 
     socket.on('left', (id) => {
-        const player = pipes.find(pipe => pipe.player.id === id).player;
+        const player = players.find(p => p.id === id);
         setMessage(`Player ${player.name} left.`);
-        removePipe(id);
+        removePlayer(id);
     });
 
     socket.on('movement', (id, movement) => {
         // console.log(Date.now() - raceStartTime - movement.time);
-        pipes.find(pipe => pipe.player.id === id).player.addMovementEvent(movement);
+        players.find(p => p.id === id).addMovementEvent(movement);
     });
 
     socket.on('highscore', (highscore) => {
@@ -317,9 +348,9 @@ const points = {
     lose: 0,
     draw: 0,
 };
-raceStartTime = Date.now();
+setMessage('Waiting for the next race to start…');
 track = new Track();
-player = addPipe(track);
+player = addPlayer(track);
 
 /**
  * Client module init
