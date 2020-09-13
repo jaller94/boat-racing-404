@@ -59,7 +59,7 @@ class Game {
 			id: u.id,
 			name: u.name,
 			finishTime: u.finishTime,
-		}));
+		})).sort((a, b) => a.finishTime < b.finishTime);
 		this.users.forEach(u => {
 			u.socket.emit('highscore', highscore);
 		});
@@ -86,6 +86,8 @@ class User {
 	}
 
 	start(length) {
+		this.movements = [];
+		this.finishTime = null;
 		this.socket.emit('start', length);
 	}
 

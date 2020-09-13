@@ -47,6 +47,7 @@ function mainLoop() {
         ctx.lineTo(track.length + 10, canvas.height);
         ctx.stroke();
         players.forEach((p, i) => {
+            if (!player.track) return;
             const pos = p.getPosition(time);
             ctx.drawImage(shipImage, pos - 10, 32 + i * 16, 16, 16);
         });
@@ -69,7 +70,7 @@ let raceStartTime;
 let players = [];
 
 function addPlayer(track, userId, name = 'You') {
-    const player = new Player(track, userId === undefined, userId);
+    const player = new Player(track, userId === undefined, userId, name);
     players.push(player);
     return player;
 }
@@ -149,7 +150,7 @@ class Track {
 }
 
 class Player {
-    constructor(track, local=true, id=undefined) {
+    constructor(track, local=true, id=undefined, name='unknown') {
         this.id = id;
         this.track = track;
         this.changes = [];
@@ -157,6 +158,7 @@ class Player {
         this.local = local;
         this.timeoutForNext = null;
         this.finishTime = null;
+        this.name = name;
     }
 
     reset(track) {
@@ -171,11 +173,13 @@ class Player {
     }
 
     finish(time) {
+        if (!this.track) return;
         this.finishTime = time;
         setMessage(`Player ${this.name} finished with ${(time / 1000).toFixed(2)} s.`);
     }
 
     addMovementEvent(change) {
+        if (!this.track) return;
         if (this.finishTime) return;
         this.changes.push(change);
         if (this.local) {
@@ -186,6 +190,7 @@ class Player {
     }
 
     setTimeoutForNext(time) {
+        if (!this.track) return;
         if (this.timeoutForNext) {
             clearTimeout(this.timeoutForNext);
         }
@@ -217,6 +222,7 @@ class Player {
     }
 
     press(timestamp) {
+        if (!this.track) return;
         if (timestamp < 0 || player.finishTime) return;
         if (this.isDown) return;
         this.isDown = true;
@@ -230,6 +236,7 @@ class Player {
     }
 
     release(timestamp) {
+        if (!this.track) return;
         if (timestamp < 0 || player.finishTime) return;
         if (!this.isDown) return;
         this.isDown = false;
@@ -334,7 +341,11 @@ function bind() {
         setTimeout(() => { setMessage('3'); }, 2000);
         setTimeout(() => { setMessage('2'); }, 3000);
         setTimeout(() => { setMessage('1'); }, 4000);
-        setTimeout(() => { setMessage('GO!'); allowInputs(); }, 5000);
+        setTimeout(() => {
+            setMessage('GO!');
+            allowInputs();
+            player.setTimeoutForNext(0);
+        }, 5000);
     });
 
     socket.on('joined', (id, name) => {
@@ -354,6 +365,7 @@ function bind() {
     socket.on('you', (id, name) => {
         player.id = id;
         player.name = name;
+        setMessage(`Connected. Your name is ${name}.`);
     });
 
     socket.on('left', (id) => {
@@ -371,20 +383,22 @@ function bind() {
     });
 
     socket.on('connect', () => {
+        players = [player];
         setMessage('Connected.');
     });
 
     socket.on('disconnect', () => {
+        players = [];
         setMessage('Connection lost!');
     });
 
     socket.on('error', () => {
+        players = [];
         setMessage('Connection error!');
     });
 }
 
 setMessage('Waiting for the next race to start…');
-track = new Track(100000);
 player = addPlayer(track);
 
 /**
