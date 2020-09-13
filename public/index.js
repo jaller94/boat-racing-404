@@ -19,6 +19,14 @@ document.getElementById('restartButton').addEventListener('click', (event) => {
     socket.emit('restart');
 });
 
+let allowRestartFlag = false;
+
+function allowRestart() {
+    document.getElementById('restartButton').disabled = false;
+    allowRestartFlag = true;
+}
+
+setTimeout(allowRestart, 30000);
 
 function mainLoop() {
     ctx.beginPath();
@@ -81,7 +89,7 @@ function removePlayer(userId) {
 }
 
 window.addEventListener('keypress', (event) => {
-    if (event.key === 'r') {
+    if (event.key === 'r' && allowRestartFlag) {
         socket.emit('restart');
     }
 });
@@ -366,12 +374,18 @@ function bind() {
         player.id = id;
         player.name = name;
         setMessage(`Connected. Your name is ${name}.`);
+        if (players.length === 1) {
+            allowRestart();
+        }
     });
 
     socket.on('left', (id) => {
         const player = players.find(p => p.id === id);
         setMessage(`Player ${player.name} left.`);
         removePlayer(id);
+        if (players.length === 1) {
+            allowRestart();
+        }
     });
 
     socket.on('movement', (id, movement) => {
@@ -380,6 +394,7 @@ function bind() {
 
     socket.on('highscore', (highscore) => {
         displayHighscore(highscore);
+        allowRestart();
     });
 
     socket.on('connect', () => {
