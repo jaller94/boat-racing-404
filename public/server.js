@@ -77,6 +77,7 @@ class User {
 		this.name = randomName();
 		this.movements = [];
 		this.finishTime = null;
+		this.skinId = 0;
 	}
 
 	addMovementEvent(event) {
@@ -90,8 +91,15 @@ class User {
 
 	finish(time) {
 		this.finishTime = time;
-		this.users.forEach(u => {
+		this.game.users.forEach(u => {
 			u.socket.emit('userFinished', this.id, time);
+		});
+	}
+
+	changeSkin(skinId) {
+		this.skinId = skinId;
+		this.game.users.forEach(u => {
+			u.socket.emit('userSkin', this.id, skinId);
 		});
 	}
 }
@@ -119,6 +127,11 @@ module.exports = {
 		socket.on("movement", (event) => {
 			console.log("Movement: " + socket.id);
 			user.addMovementEvent(event);
+		});
+
+		socket.on("changeSkin", (skinId) => {
+			console.log("Change skin: " + socket.id);
+			user.changeSkin(skinId);
 		});
 
 		socket.on("finish", (time) => {

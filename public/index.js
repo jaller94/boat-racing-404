@@ -35,7 +35,7 @@ function mainLoop() {
             ctx.fillRect(bump.start, 24, bump.length, 300);
         }
 
-        ctx.strokeStyle = '#666';
+        ctx.strokeStyle = '#090';
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(0, canvas.height);
@@ -55,7 +55,7 @@ function mainLoop() {
 }
 
 function drawMap() {
-    for (let i = -6; i < 16; i++) {
+    for (let i = -6; i < 100; i++) {
         ctx.drawImage(tilesImage, 128, 128 + 64, 64, 64, i*64, 0, 64, 64);
     }
 }
@@ -116,7 +116,7 @@ class Track {
         for (let index = 1; index < Math.floor(length / 10); index++) {
             this.bumps.push({
                 start: index * 100,
-                length: 50,
+                length: 30,
             });
         }
     }
