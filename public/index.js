@@ -88,27 +88,46 @@ window.addEventListener('keypress', (event) => {
 window.addEventListener('keydown', (event) => {
     if (event.key === ' ') {
         event.preventDefault();
-        const time = Date.now() - raceStartTime;
-        player.press(time);
     }
 });
 
-window.addEventListener('pointerdown', (event) => {
-    const time = Date.now() - raceStartTime;
-    player.press(time);
-});
+function handleKeyDown(event) {
+    if (event.key === ' ') {
+        const time = Date.now() - raceStartTime;
+        player.press(time);
+    }
+}
 
-window.addEventListener('pointerup', (event) => {
-    const time = Date.now() - raceStartTime;
-    player.release(time);
-});
-
-window.addEventListener('keyup', (event) => {
+function handleKeyUp(event) {
     if (event.key === ' ') {
         const time = Date.now() - raceStartTime;
         player.release(time);
     }
-});
+}
+
+function handlePointerDown() {
+    const time = Date.now() - raceStartTime;
+    player.press(time);
+}
+
+function handlePointerUp(event) {
+    const time = Date.now() - raceStartTime;
+    player.release(time);
+}
+
+function allowInputs() {
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointerup', handlePointerUp);
+}
+
+function disallowInputs() {
+    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('keyup', handleKeyUp);
+    window.removeEventListener('pointerdown', handlePointerDown);
+    window.removeEventListener('pointerup', handlePointerUp);
+}
 
 class Track {
     constructor(length = 100) {
@@ -186,9 +205,10 @@ class Player {
                     position: next.position,
                     speed: 0.01,
                 });
+                disallowInputs();
                 socket.emit('finish', nextTime);
                 this.finishTime = nextTime;
-                console.log('finished');
+                console.log('You finished');
             }
             if (next.type !== 'finish') {
                 this.setTimeoutForNext(nextTime);
@@ -314,7 +334,7 @@ function bind() {
         setTimeout(() => { setMessage('3'); }, 2000);
         setTimeout(() => { setMessage('2'); }, 3000);
         setTimeout(() => { setMessage('1'); }, 4000);
-        setTimeout(() => { setMessage('GO!'); }, 5000);
+        setTimeout(() => { setMessage('GO!'); allowInputs(); }, 5000);
     });
 
     socket.on('joined', (id, name) => {
@@ -363,11 +383,6 @@ function bind() {
     });
 }
 
-const points = {
-    win: 0,
-    lose: 0,
-    draw: 0,
-};
 setMessage('Waiting for the next race to start…');
 track = new Track(100000);
 player = addPlayer(track);
