@@ -14,7 +14,8 @@ tilesImage.addEventListener('load', () => {
     mainLoop();
 });
 
-document.addEventListener('click', () => {
+document.getElementById('restartButton').addEventListener('click', (event) => {
+    event.stopPropagation();
     socket.emit('restart');
 });
 
@@ -56,7 +57,7 @@ function mainLoop() {
 
 function drawMap() {
     for (let i = -6; i < 100; i++) {
-        ctx.drawImage(tilesImage, 128, 128 + 64, 64, 64, i*64, 0, 64, 64);
+        ctx.drawImage(tilesImage, 128, 128 + 64, 64, 64, i*66, 0, 64, 64);
     }
 }
 
@@ -113,7 +114,7 @@ class Track {
     constructor(length = 100) {
         this.length = length;
         this.bumps = [];
-        for (let index = 1; index < Math.floor(length / 10); index++) {
+        for (let index = 1; index < Math.floor(length / 100); index++) {
             this.bumps.push({
                 start: index * 100,
                 length: 30,
@@ -148,6 +149,11 @@ class Player {
         }
         this.timeoutForNext = null;
         this.finishTime = null;
+    }
+
+    finish(time) {
+        this.finishTime = time;
+        setMessage(`Player ${this.name} finished with ${(time / 1000).toFixed(2)} s.`);
     }
 
     addMovementEvent(change) {
@@ -292,6 +298,7 @@ function displayHighscore(highscore) {
         tr.appendChild(time);
         tbody.appendChild(tr);
     });
+    highscoreDiv.style = '';
 }
 
 /**
@@ -315,6 +322,20 @@ function bind() {
         addPlayer(track, id, name);
     });
 
+    socket.on('userFinished', (id, time) => {
+        const player = players.find(p => p.id === id);
+        if (player) {
+            player.finish(time);
+        } else {
+            console.error(`Unknown player ${id} finished.`);
+        }
+    });
+
+    socket.on('you', (id, name) => {
+        player.id = id;
+        player.name = name;
+    });
+
     socket.on('left', (id) => {
         const player = players.find(p => p.id === id);
         setMessage(`Player ${player.name} left.`);
@@ -322,7 +343,6 @@ function bind() {
     });
 
     socket.on('movement', (id, movement) => {
-        // console.log(Date.now() - raceStartTime - movement.time);
         players.find(p => p.id === id).addMovementEvent(movement);
     });
 
@@ -349,7 +369,7 @@ const points = {
     draw: 0,
 };
 setMessage('Waiting for the next race to start…');
-track = new Track();
+track = new Track(100000);
 player = addPlayer(track);
 
 /**

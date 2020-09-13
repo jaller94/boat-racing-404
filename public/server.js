@@ -49,7 +49,7 @@ class Game {
 	start() {
 		this.startDate = Date.now();
 		this.users.forEach((user) => {
-			user.start();
+			user.start(404);
 		});
 	}
 
@@ -85,8 +85,8 @@ class User {
 		this.game.populateMovement(this, event);
 	}
 
-	start() {
-		this.socket.emit('start', 1000);
+	start(length) {
+		this.socket.emit('start', length);
 	}
 
 	finish(time) {
@@ -143,6 +143,7 @@ module.exports = {
 		});
 
 		console.log("Connected: " + socket.id);
+		socket.emit('you', socket.id, user.name);
 	},
 
 	stat: (req, res) => {
