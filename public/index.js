@@ -47,7 +47,7 @@ function mainLoop() {
         ctx.lineTo(track.length + 10, canvas.height);
         ctx.stroke();
         players.forEach((p, i) => {
-            if (!player.track) return;
+            if (!p.track) return;
             const pos = p.getPosition(time);
             ctx.drawImage(shipImage, pos - 10, 32 + i * 16, 16, 16);
         });
@@ -350,7 +350,7 @@ function bind() {
 
     socket.on('joined', (id, name) => {
         setMessage(`Player ${name} joined.`);
-        addPlayer(track, id, name);
+        addPlayer(null, id, name);
     });
 
     socket.on('userFinished', (id, time) => {

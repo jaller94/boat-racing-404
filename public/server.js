@@ -18,8 +18,9 @@ function randomName() {
 }
 
 class Game {
-	constructor(users) {
+	constructor() {
 		this.users = [];
+		this.racingUsers = [];
 		this.firstFinishTime = null;
 	}
 
@@ -33,7 +34,13 @@ class Game {
 
 	removeUser(user) {
 		const pos = this.users.findIndex(u => u === user);
-		this.users.splice(pos, 1);
+		if (pos !== -1) {
+			this.users.splice(pos, 1);
+		}
+		const pos2 = this.racingUsers.findIndex(u => u === user);
+		if (pos2 !== -1) {
+			this.racingUsers.splice(pos2, 1);
+		}
 		this.users.forEach(u => {
 			u.socket.emit('left', user.id);
 		});
@@ -48,14 +55,15 @@ class Game {
 
 	start() {
 		this.startDate = Date.now();
-		this.users.forEach((user) => {
+		this.racingUsers = [...this.users];
+		this.racingUsers.forEach((user) => {
 			user.start(404);
 		});
 	}
 
 	end() {
 		console.log('Sending the highscores!');
-		const highscore = this.users.map(u => ({
+		const highscore = this.racingUsers.map(u => ({
 			id: u.id,
 			name: u.name,
 			finishTime: u.finishTime,
@@ -139,7 +147,7 @@ module.exports = {
 		socket.on("finish", (time) => {
 			console.log("Finished: " + socket.id);
 			user.finish(time);
-			if (game.users.every(u => !!u.finishTime)) {
+			if (game.racingUsers.every(u => !!u.finishTime)) {
 				user.game.end();
 			}
 		});
