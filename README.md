@@ -10,9 +10,11 @@ Invite some friends to play the game with you! There are currently no bots.
 
 **If you want to rate the game, please review this version.** It represents the state before the submission deadline on 2020-09-13.
 
+Send the link to some friends and press 'Restart game'.
+
 Deployed version: https://boat-racing-404.herokuapp.com/
 
-Send the link to some friends and press 'Restart game'.
+Submission page: https://js13kgames.com/entries/boat-racing-404
 
 Source code: https://github.com/jaller94/boat-racing-404/tree/submission
 
