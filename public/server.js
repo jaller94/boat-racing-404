@@ -57,7 +57,7 @@ class Game {
 		this.startDate = Date.now();
 		this.racingUsers = [...this.users];
 		this.racingUsers.forEach((user) => {
-			user.start(404);
+			user.start(405);
 		});
 	}
 
