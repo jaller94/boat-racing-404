@@ -1,10 +1,24 @@
-# js13kgames.com Game Server
+# Boat racing 405
 
-Game server for the [js13kGames Competition](http://js13kgames.com/).
+This game was started as part of the [js13kGames Competition](http://js13kgames.com/) 2020.
+
+You can play the improved game here: https://boat-racing-405.herokuapp.com/
+
+Invite some friends to play the game with you! There are currently no bots.
+
+## Submission version 404
+
+**If you want to rate the game, please review this version.** It represents the state before the submission deadline on 2020-09-13.
+
+Deployed version: https://boat-racing-404.herokuapp.com/
+
+Send the link to some friends and press 'Restart game'.
+
+Source code: https://github.com/jaller94/boat-racing-404/tree/submission
 
 ## Install
 
-[Download](https://github.com/js13kgames/js13kserver/archive/master.zip) the skeleton. Extract the files and install the third party libraries with `npm`.
+Extract the files and install the third party libraries with `npm`.
 
     npm install
 
@@ -43,7 +57,7 @@ In the `server.js` file you can access the `storage` interface. The API document
 
 ## Deploy to Heroku
 
-All server category entries must be hosted on [Heroku](https://www.heroku.com/). You can either use free or paid plan.
+This game can be hosted on [Heroku](https://www.heroku.com/). You can either use free or paid plan.
 
 1. Push your files to your GitHub repository
 2. Create new WebApp on heroku
@@ -52,12 +66,6 @@ All server category entries must be hosted on [Heroku](https://www.heroku.com/).
 5. Deploy your code
 
 You can find more information about the platform on the [Heroku Dev Center](https://devcenter.heroku.com/) site.
-
-## Submit your entry
-
-1. Zip all files in the `public` folder.
-2. Submit your entry on the [js13kgames.com](http://js13kgames.com) site.
-3. Add [contact@js13kgames.com](mailto:contact@js13kgames.com) games as collaborator to your Heroku WebApp.
 
 ## Server category rules
 
